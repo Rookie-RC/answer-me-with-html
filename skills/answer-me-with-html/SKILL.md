@@ -177,6 +177,20 @@ A reply starts with `# Re: <page title>` and lists `Decisions`, `Comments` and `
 - Chinese also gets warnings for typos (`登陆` → `登录`), vague quantities (`尽快`, `若干`, `大概`, `多次`), `以上` / `以下` / `以内` after a number (write `大于` / `不小于` / `不超过`) and one meaning written several ways (`单击` → `点击`, `键入` → `输入`, `入参` → `参数`). The list comes from [Simplified Technical Chinese](https://github.com/mzopedia/simplified-technical-chinese).
 - For counter-examples shown on purpose, use `~~strikethrough~~` or put them in a table row whose status is `no`; the check skips them.
 
+## 6a. Local conventions (this installation's own rules; the user set them 2026-10-11)
+
+This copy is the user's customised version and is not updated from upstream. These rules apply to every page, including incremental updates of a dashboard. Where they conflict with sections 3–6, follow these.
+
+1. **只解释自创词。** agent 或项目自己定义的名词（阶段名、分级、门槛、参照、标签）在一个名词解释面板里各解释一次。行业通用词（pLDDT、PAE、ProteinMPNN 等）不解释。
+2. **不用黑话。** 不用没解释的缩写和内部标签。不用“之前、旧文件、修订N、某号窗口”这类无指向的说法，改写日期、文件名或章节号。一个概念始终用一个词。
+3. **一条主线。** 有阶段或流程时，第一个面板是一条直线（`flow LR` 加一张“阶段 | 做了什么 | 一句话结果 | 详见”表）。其余面板各服务主线上的一个点。
+4. **面板标出处。** 每个面板的 `meta=` 写它对应的文档章节（§）和文件夹。面板标题写结论，不只写主题。
+5. **阶段对应文件夹。** 页面涉及仓库产物时，加一个面板：先列根目录，再列“阶段 → 文件夹 → 读数在哪 → 脚本”。
+6. **短。** 每个阶段面板按“想知道 / 做了什么 / 读到什么（一张小表）/ 说明什么 / 不能说明什么”写。不复制文档原文，只写数字并指向章节。
+7. **多用列表，少用段落。** 每个“想知道 / 做了什么 / 说明什么 / 不能说明什么”都写成列表项，一项一个意思；有并列内容就用子列表。
+8. **内部名称也要解释。** 臂名、骨架名、设计名、位点名这类内部名称，在名词解释面板里逐个说明（格式、各部分的含义、涉及的全部取值）。面板正文里用到才列。
+9. **只写自己的页面。** 已有页面若另有会话在维护，不覆盖它。示例或改版写到新文件名，改版完成后由用户决定是否替换。
+
 ## 7. Explainer videos (am video, 3Blue1Brown style)
 
 Use only when the user explicitly asks for a video ("make a video", "explain it as a video", "3b1b style", "explainer video"). Do not produce a video unasked in always-on mode either.
