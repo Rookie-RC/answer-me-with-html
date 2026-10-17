@@ -23,7 +23,7 @@ A -> B: label
 ```
 ````
 
-- Every `## ` heading is a panel. The letters A, B, C are optional and added for you.
+- Every `## ` heading is a panel. The letters A, B, C are optional and added for you; an ID you write yourself must be unique.
 - `span=2` makes a panel two columns wide, `rows=2` makes it two rows tall, and `bare` removes its title bar. `span` is a hint: the page sizes each panel to its content, so wide tables and diagrams need no `span`. Write `span` only for a panel that must stand out. `rows` applies only to the plain grid (without JavaScript, in print and on narrow screens); the justified layout in a browser ignores it.
 - When no component fits, use a ```` ```html ```` or ```` ```svg ```` block to embed raw markup. The page carries a Content-Security-Policy, so a script or an inline event handler in the block does not run and nothing loads from the network.
 - A placeholder such as `<host>` is shown as text. Inside a sentence only text-level tags stay (`b`, `kbd`, `sup`, `a`, `span`, `br`, `img` ...), and tags that break the page (`script`, `style`, `iframe` ...) are shown as text too. Put raw markup in an `html` or `svg` block and code in backticks. The render lists every tag it changed.
@@ -128,6 +128,35 @@ $$
 
 Syntax in the CLI: `am help format`.
 
+## Charts
+
+For numbers that you compare, write a `chart` block. It draws bars, a line or a pie from a table, so you do not write an `svg` block by hand:
+
+````markdown
+```chart bar unit=ms
+       | p50 | p95
+* Redis     | 12  | 40
+Memcached   | 9   | 31
+Postgres    | 28  | 95
+```
+````
+
+- The type follows `chart`: `bar` draws vertical bars, `bar horizontal` draws horizontal bars, `line` draws a line for each series and `pie` draws a donut. Each line is a label and one number for each series, with `|` between the cells.
+- A first line whose values are not numbers names the series. Its label cell may be empty. A row with more than one number needs this line, so the reader can tell what each color is. Without it every row has one number: one series and no legend. `bar` and `line` take 1 to 6 series. A `bar` takes up to 24 rows and a `line` up to 60 points.
+- A number is plain: an optional `+` or `-`, digits and an optional decimal point. On `bar` and `line` a negative value draws below the zero line. A bar axis always starts at 0, it is never broken, and it ends on the first round tick at or above the largest value. A line axis covers the data with round ticks and may start above 0, because a line shows position, not length; it starts at 0 when the smallest value is a third of the largest or less, and when values reach or cross 0.
+- `unit=` is added to the axis and to the value labels as it is: `unit=%` gives `40%`, `unit=ms` gives `40ms`, and `unit=" ms"` gives `40 ms`. The panel title is the chart title, so there is no `title=`.
+- `*` before a label highlights the row. On `bar` with one series its bar uses the accent color, and with several series it keeps its series colors. The other bars turn gray. On `line` the points of the row are larger and show their values, and a thin dashed guide line marks its position; the lines keep their colors and nothing turns gray. With several series the values of the row stand in a column beside the guide, each in its series color. On `pie` the slice keeps its color and the other slices turn gray.
+- A chart with more than one series has a legend. Up to 12 bars carry their value. A long label in a vertical chart is slanted before it is shortened.
+- `line`: each row is a position on the horizontal axis, the first row on the left. With one series and up to 12 points every point shows its value; with more, only the highlighted row does. With many points the labels on the axis are thinned to every second, third or later one, so they do not overlap.
+- `pie`: one number on each row, so a first line may give one series name and no more. Values are 0 or more and at least one is above 0. Write up to 6 slices, one for each series color. The slices start at 12 o'clock and go clockwise in the order written. A list beside the donut shows each slice's color, label, value and percentage. The percentage is a whole number, with one decimal when a slice is so small that it would show 0%. The total is in the middle. With `unit=%` the values are the shares already, so the list shows the label and the value only, the table has no share column and the middle is empty.
+- Under the chart, a collapsed table holds every number. A `pie` table also has a share column. A screen reader can read it and a reader can copy from it. Its labels follow the page language.
+- A right-to-left page mirrors the chart: the first row is on the right, horizontal bars grow to the left, and a pie goes counterclockwise with its list on the left. Numbers stay left to right.
+- The series colors are theme tokens (`--series-1` to `--series-6`, see [Diagram tokens](#diagram-tokens)). A page without a chart does not carry the chart styles.
+- In an `am video` scene, a chart steps row by row, like `limits`: a `line` adds one point of each series, a `pie` adds one slice.
+- A line that has the wrong number of cells, a value that is not a number, a negative or all-zero pie, and a table over the limits are errors with the line number and a correct example.
+
+Full syntax: `am help chart`.
+
 ## Use the CLI directly, without an agent
 
 The CLI is `scripts/am.mjs` inside the skill folder.
@@ -152,7 +181,7 @@ A -> B: hello
 AM_EOF
 ````
 
-Pages go to `~/.answer-me-with-html/pages/` by default. Set `AM_HOME` to move them. A page with STE or code warnings does not open in the browser (add `--open` to open it anyway). To render the fixed draft again, run `am render … --replace <page>`: the earlier page is deleted once the new one is written, so `pages/` keeps one page per answer. The default folder is private to your user (mode 0700), so other users on a shared host cannot read your pages; an existing `AM_HOME` folder keeps its mode.
+Pages go to `~/.answer-me-with-html/pages/` by default. Set `AM_HOME` to move them. `-o` names a file, not a folder; use a name such as `page.html`. An explicit name without an extension is still a file, and the CLI prints a notice recommending `.html`. A page with STE or code warnings does not open in the browser (add `--open` to open it anyway). To render the fixed draft again, run `am render … --replace <page>`: the earlier page is deleted once the new one is written, so `pages/` keeps one page per answer. The default folder is private to your user (mode 0700), so other users on a shared host cannot read your pages; an existing `AM_HOME` folder keeps its mode.
 
 ## Languages
 
@@ -224,7 +253,7 @@ The classes your `css` may target stay stable: a later version keeps every one o
 
 ### Diagram tokens
 
-A theme restyles what is inside a diagram (flow, sequence, er, and the boxes of a tree) with tokens, not with selectors: set them in `tokens` and every diagram follows. They are all optional. A theme that sets none draws the diagrams it always did, and an older version ignores them.
+A theme restyles what is inside a diagram (flow, sequence, er, the boxes of a tree, and the bars, lines and slices of a chart) with tokens, not with selectors: set them in `tokens` and every diagram follows. They are all optional. A theme that sets none draws the diagrams it always did, and an older version ignores them.
 
 | Part | Tokens | Default |
 | :--- | :--- | :--- |
@@ -235,9 +264,11 @@ A theme restyles what is inside a diagram (flow, sequence, er, and the boxes of 
 | Sequence note | `--note-fill`, `--note-stroke`, `--note-width`, `--note-radius` | `--warn-bg`, `--warn`, 1, 2px |
 | Group box (flow) | `--cluster-fill`, `--cluster-stroke` | `--fill`, `--line-2` |
 | Lifeline | `--lifeline-color` | `--ink-3` |
+| Chart series (`chart`) | `--series-1`, `--series-2`, `--series-3`, `--series-4`, `--series-5`, `--series-6` | `#4e79a7`, `#f28e2b`, `#e15759`, `#76b7b2`, `#59a14f`, `#b07aa1` in light mode; `#7aa6d6`, `#f5a55a`, `#ef7f80`, `#8fd0cb`, `#7cc472`, `#c99bbd` in dark mode |
 
 - `--node-width`, `--edge-width`, `--node-radius`, `--note-width` and `--note-radius` take a number or a `px` or `em` value (a bare number means px). `--node-radius` also rounds actors and does not change the pill and diamond shapes. `--node-shadow` is `none` or one or more `drop-shadow(...)`, for example `drop-shadow(3px 3px 0 #111111)`, and also casts the shadow of actors. Any other value is an error, and the theme is skipped.
 - Colors are any CSS color. In light and dark mode `am theme check` reads these pairs and needs 4.5:1, only when the theme sets one side: `--node-text` on `--node-fill`, `--hi-text` on `--hi-fill`, `--actor-text` on `--actor-fill`, `--ink` on `--note-fill`, and `--edge-label` on `--paper`. Dark mode keeps the light value of a token it does not set, so set both.
+- The series colors are read as graphics, not as text. `am theme check` warns when a `--series-N` has less than 3:1 against `--paper`, in light or dark, only when the theme sets that token. It is a warning, not an error, because the bars carry their value and the legend and the data table name each series. A theme that sets none gets the default palette; some of its colors (the orange and the teal) are below 3:1 on a white `--paper`.
 - A token value goes through the same external-resource check as `css`: no `url()` or `image-set()` to `http:`, `https:` or `//`, and no backslash. `am theme check` warns; the catalog and `am theme add` reject.
 - There is no token for the font family, size, weight or letter spacing in a diagram. The CLI measures diagram text for the sans font, so a different font would overflow its box.
 - The corner radius needs Safari 17.4 or newer; an older Safari draws the default radius.

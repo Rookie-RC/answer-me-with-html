@@ -1,9 +1,9 @@
 // am CLI: render / patch / video / lint / theme / list / help. main() takes injected streams and environment variables, for testing.
 
 import { parseArgs } from 'node:util';
-import { readFileSync, writeFileSync, mkdirSync, existsSync, rmSync } from 'node:fs';
+import { readFileSync, writeFileSync, mkdirSync, existsSync, rmSync, statSync } from 'node:fs';
 import { VERSION } from './assets.js';
-import { join, resolve, dirname, basename, sep } from 'node:path';
+import { join, resolve, dirname, basename, extname, sep } from 'node:path';
 import { spawn } from 'node:child_process';
 import { renderDoc, RenderError, LintError } from './render.js';
 import { parseDoc, ParseError, CHOICES, VOICES } from './parse.js';
@@ -38,16 +38,16 @@ const MAX_LISTED_WARNINGS = 20;
 const USAGE = `Answer me with HTML ${VERSION} — renders a Markdown draft into a single-file HTML explainer page
 
 Usage:
-  am render <file|->  [-o <path>] [--replace <page>] [--no-open] [--theme ${['auto', ...themeNames('page')].join('|')}]
+  am render <file|->  [-o <file>] [--replace <page>] [--no-open] [--theme ${['auto', ...themeNames('page')].join('|')}]
                       [--template sheet|doc] [--style off|80|strict] [--mode auto|light|dark]
   am patch  <html> --panel <title> [file|-] [--from file] [--theme …] [--no-open]
                                                   replace one ## panel of an existing page and overwrite that HTML in place
-  am video  <file|->  [-o <path>] [--voice auto|elevenlabs|local|system|off] [--mp4] [--webm] [--no-open]
+  am video  <file|->  [-o <file>] [--voice auto|elevenlabs|local|system|off] [--mp4] [--webm] [--no-open]
                       [--theme ${['auto', ...themeNames('video')].join('|')}] [--mode light|dark]
                                                   render a video draft into a 3b1b-style explainer video player page (--mp4 / --webm also save a video file)
   am lint   <file|->  [--style off|80|strict]     run only the STE controlled-writing check
   am config [set <key> <value> | get <key> | reset [key]]  show or change settings
-  am serve  [--port 8765] [--lan] [--public-url <origin>]  serve pages over http on 127.0.0.1 (--lan: on the local network); am render then prints a link:
+  am serve  [--port 8765] [--lan] [--public-url <origin>] [--secret-file <path>]  serve pages over http on 127.0.0.1 (--lan: on the local network); am render then prints a link:
   am clean  [--days 30] [--all] [--dry-run]       delete old pages, old videos and the voice-over cache
   am theme check <name|file.json> [--no-open]     check a theme's colors and contrast, and render specimen pages
   am theme add <name> [--use] [--force]           install a theme from the catalog (answer-me-with-html.com/themes/); --use makes it the default
@@ -56,6 +56,7 @@ Usage:
   am help [component|format|code|image|video|patch|theme]  show component syntax / page draft format / code block / image syntax / video draft format / patch / theme usage
 
 - A file argument of - reads from stdin (good for heredoc: am render - <<'EOF' ... EOF).
+- -o names an output file, for example -o page.html; it does not name a folder.
 - Output goes to ~/.answer-me-with-html/pages/ by default (change it with the AM_HOME environment variable).
 - A page with STE or code warnings does not open. Fix the draft and render again with --replace <page>: the earlier page is deleted once the new one is written.
 - Set auto-open, the default theme and more with am config; --open / --no-open apply to this run only.
@@ -180,7 +181,7 @@ Client -> Server: ACK
 
 - "## " starts a scene; a scene holds components or Markdown (the picture), and lines that start with > are narration (one beat per line).
 - When narration line N plays, step N of the picture appears: in flow / er / sequence / tree each source line is one step;
-  timeline, limits, table rows, list items and paragraphs step item by item. With more steps than narration lines, the steps are spread across the lines;
+  timeline, limits, chart rows, table rows, list items and paragraphs step item by item. With more steps than narration lines, the steps are spread across the lines;
   with more narration lines than steps, the extra first lines act as an opening and show nothing new.
 - Write [name] in narration: the camera zooms in on the element with that name and highlights it, and the word turns yellow in the caption.
 - Nodes / participants with the same name in adjacent scenes move smoothly from the old position to the new one (cross-scene morph).
@@ -233,6 +234,7 @@ export async function main(argv, io = {}) {
         port: { type: 'string' },
         lan: { type: 'boolean' },
         'public-url': { type: 'string' },
+        'secret-file': { type: 'string' },
         all: { type: 'boolean' },
         'dry-run': { type: 'boolean' },
         use: { type: 'boolean' },
@@ -262,7 +264,7 @@ export async function main(argv, io = {}) {
     case 'config': return cmdConfig([arg, ...rest].filter((x) => x !== undefined), ctx);
     case 'theme': return cmdTheme(arg, rest[0], opts, ctx);
     case 'clean': return cmdClean(opts, { print, fail, env });
-    case 'serve': return cmdServe(opts, { print, fail, env });
+    case 'serve': return cmdServe(opts, ctx);
     case '__update-check': return (await runUpdateCheck(amHome(env))) ? 0 : 1;
     case 'list': return cmdList(ctx), 0;
     case 'help': return cmdHelp(arg, { print, fail });
@@ -331,7 +333,9 @@ async function cmdRender(src, opts, ctx, baseDir) {
     return reportError(e, fail);
   }
   const file = outputPath('pages', result.meta.title, opts, ctx);
+  if (!file) return 2;
   emit(result, file, ctx);
+  if (opts.out && !extname(file)) print('! -o names a file without an extension; use .html for an HTML page');
   // Delete the earlier attempt only now: a render that fails above keeps it.
   if (replaced && replaced !== resolve(file)) rmSync(replaced, { force: true });
   // A page with STE, code or math warnings is likely to be rendered again, so it opens only when --open asks for it.
@@ -404,8 +408,8 @@ Pick it like a built-in theme: theme: notes in the draft, --theme notes, or am c
   Target these classes (they stay stable): ${THEME_SELECTORS.join(' ')}.
   Keep the file self-contained: no url() or image-set() to http(s) or //, no @import, no @font-face, no backslash escapes. A link would send a request each time a page opens.
   am theme check warns about them; the catalog and am theme add reject them.
-- Diagram tokens (optional): node-fill node-stroke node-width node-radius node-shadow node-text, hi-fill hi-stroke hi-text, edge-color edge-width edge-label, actor-fill actor-stroke actor-text, note-fill note-stroke note-width note-radius, cluster-fill cluster-stroke, lifeline-color (each with a -- prefix).
-  They restyle what is inside flow, sequence and er diagrams and tree boxes, and each defaults to today's look. Widths and radii are a number or px / em (a bare number is px);
+- Diagram tokens (optional): node-fill node-stroke node-width node-radius node-shadow node-text, hi-fill hi-stroke hi-text, edge-color edge-width edge-label, actor-fill actor-stroke actor-text, note-fill note-stroke note-width note-radius, cluster-fill cluster-stroke, lifeline-color, series-1 series-2 series-3 series-4 series-5 series-6 (each with a -- prefix).
+  They restyle what is inside flow, sequence and er diagrams and tree boxes, and each defaults to today's look. The series tokens color the bars, lines and slices of a chart: a fixed palette is the default (a light set and a dark set); a series color below 3:1 against --paper in light or dark gives a warning. Widths and radii are a number or px / em (a bare number is px);
   --node-shadow is none or drop-shadow(...), like drop-shadow(3px 3px 0 #111). Do not write diagram selectors in css. There is no token for fonts: diagram text is measured for the sans font.
 - video (optional): video-only variables (--v-stage, --v-title-font, --v-cap-fg, --v-cap-bg, --v-glow) and & css for am video.
 - A page carries the built-in themes plus its own theme, so it opens anywhere; readers without your fonts see the fallback.
@@ -499,10 +503,12 @@ async function cmdPatch(htmlArg, fromArg, opts, ctx) {
 }
 
 async function cmdVideo(src, opts, ctx) {
-  const { fail } = ctx;
+  const { fail, print } = ctx;
   const config = loadConfig(ctx);
   const voice = opts.voice ?? config.values.voice;
   if (!validVoice(voice, fail)) return 2;
+  let file = opts.out ? outputPath('videos', '', opts, ctx) : null;
+  if (opts.out && !file) return 2;
   let result;
   try {
     result = await buildVideo(src, voice, opts, config, ctx);
@@ -511,8 +517,10 @@ async function cmdVideo(src, opts, ctx) {
     fail(`✗ Voice-over failed: ${e.message}. Add --voice off for captions only`);
     return 1;
   }
-  const file = outputPath('videos', result.meta.title, opts, ctx);
+  file ??= outputPath('videos', result.meta.title, opts, ctx);
+  if (!file) return 2;
   emit(result, file, ctx);
+  if (opts.out && !extname(file)) print('! -o names a file without an extension; use .html for an HTML page');
   for (const format of ['mp4', 'webm']) {
     if (opts[format] && !(await exportVideo(file, result.wav, format, ctx))) return 1;
   }
@@ -579,8 +587,15 @@ function themeWarnings({ fail, themes }) {
 }
 
 // Output path: the -o path when given, otherwise pages/ or videos/ in the data directory. io.now can inject a clock.
-function outputPath(dir, title, opts, { env, io }) {
-  if (opts.out) return resolve(io.cwd ?? process.cwd(), opts.out);
+function outputPath(dir, title, opts, { env, io, fail }) {
+  if (opts.out) {
+    const file = resolve(io.cwd ?? process.cwd(), opts.out);
+    if (statSync(file, { throwIfNoEntry: false })?.isDirectory()) {
+      fail('✗ -o names a folder; give a file path, for example -o page.html');
+      return null;
+    }
+    return file;
+  }
   return join(amHome(env), dir, `${slug(title)}-${stamp(new Date(io.now?.() ?? Date.now()))}.html`);
 }
 
@@ -698,13 +713,14 @@ function cmdClean(opts, { print, fail, env }) {
   return 0;
 }
 
-function cmdServe(opts, { print, fail, env }) {
+function cmdServe(opts, { print, fail, env, io }) {
   if (opts.port !== undefined && !(/^\d+$/.test(opts.port.trim()) && Number(opts.port) <= 65535)) {
     fail('✗ --port needs a number from 0 to 65535 (0 picks a free port)');
     return 2;
   }
   const port = opts.port === undefined ? DEFAULT_PORT : Number(opts.port);
-  return runServe({ home: amHome(env), port, lan: !!opts.lan, publicUrl: opts['public-url'], print, fail });
+  const secretFile = opts['secret-file'] === undefined ? undefined : resolve(io?.cwd ?? process.cwd(), opts['secret-file']);
+  return runServe({ home: amHome(env), port, lan: !!opts.lan, publicUrl: opts['public-url'], secretFile, print, fail });
 }
 
 function cmdLint(src, opts, { print, fail }) {

@@ -12,7 +12,7 @@ export default {
   ui: {
     remark: {
       button: 'סימון',
-      hint: 'הערה (אופציונלי)', save: 'שמירה', remove: 'הסרה',
+      hint: 'הערה (אופציונלי)', save: 'שמירה', remove: 'הסרה', clear: 'ניקוי כל הסימונים', clearConfirm: 'לחצו שוב כדי לנקות {n} סימונים',
       section: 'סימונים',
       kinds: { suggestion: 'הצעה', keep: 'להשאיר', question: 'שאלה', concern: 'חשש' },
     },
@@ -35,6 +35,7 @@ export default {
     expand: 'הגדלת התרשים', close: 'סגירה', diagram: 'מציג התרשים',
     delta: { added: 'נוסף', removed: 'הוסר', changed: 'שונה', view: 'תצוגה', before: 'לפני', changes: 'שינויים', after: 'אחרי' },
     generated: 'נוצר באמצעות', limits: { value: '{value} מתוך {limit}', limit: 'עד {limit}' },
+    chart: { name: 'תרשים', data: 'נתונים', value: 'ערך', share: 'חלק' },
   },
   // Names for the frontmatter keys an agent writes most (`author: …`), shown under the title. Other keys show as written.
   metaKeys: {
