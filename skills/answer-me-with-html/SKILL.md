@@ -192,7 +192,7 @@ Every sentence on the page gives the reader one fact they need. The idea comes f
 
 ## 6a. Local conventions (this installation's own rules; the user set them 2026-10-11)
 
-This copy is the user's customised version, 基于原仓库 0.5.4 并保留本地约定. These rules apply to every page, including incremental updates of a dashboard. Where they conflict with sections 3–6, follow these.
+This copy is the user's customised version, 基于原仓库 0.5.5 并保留本地约定. These rules apply to every page, including incremental updates of a dashboard. Where they conflict with sections 3–6, follow these.
 
 1. **只解释自创词。** agent 或项目自己定义的名词（阶段名、分级、门槛、参照、标签）在一个名词解释面板里各解释一次。行业通用词（pLDDT、PAE、ProteinMPNN 等）不解释。
 2. **不用黑话。** 不用没解释的缩写和内部标签。不用“之前、旧文件、修订N、某号窗口”这类无指向的说法，改写日期、文件名或章节号。一个概念始终用一个词。
